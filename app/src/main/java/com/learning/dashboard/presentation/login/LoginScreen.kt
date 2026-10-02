@@ -61,6 +61,7 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isConnected by viewModel.isConnected.collectAsState()
     val focusManager = LocalFocusManager.current
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -137,6 +138,16 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .padding(24.dp)
                     ) {
+                        // Offline notice if device has no internet
+                        if (!isConnected) {
+                            com.learning.dashboard.presentation.components.NetworkModeBanner(
+                                isOffline = true,
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                        }
+
                         // General error banner if API failed
                         if (uiState.generalError != null) {
                             ErrorBanner(

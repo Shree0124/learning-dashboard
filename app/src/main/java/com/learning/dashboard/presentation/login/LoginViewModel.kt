@@ -18,6 +18,20 @@ class LoginViewModel(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    private val _isConnected = MutableStateFlow(loginUseCase.isConnected())
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            loginUseCase.observeNetworkConnectivity().collect { connected ->
+                _isConnected.value = connected
+                if (connected && _uiState.value.generalError?.contains("internet", ignoreCase = true) == true) {
+                    _uiState.update { it.copy(generalError = null) }
+                }
+            }
+        }
+    }
+
     fun onEmailChanged(newEmail: String) {
         _uiState.update {
             it.copy(
@@ -40,6 +54,17 @@ class LoginViewModel(
 
     fun login() {
         val currentState = _uiState.value
+
+        // Check device internet connectivity
+        if (!loginUseCase.isConnected()) {
+            _uiState.update {
+                it.copy(
+                    generalError = "No internet connection. An active internet connection is required to log in.",
+                    isLoading = false
+                )
+            }
+            return
+        }
 
         // Validate credentials
         val validation = loginUseCase.validateInput(currentState.email, currentState.password)

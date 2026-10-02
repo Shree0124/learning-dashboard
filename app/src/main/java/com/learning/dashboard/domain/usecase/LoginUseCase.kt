@@ -3,6 +3,7 @@ package com.learning.dashboard.domain.usecase
 import com.learning.dashboard.domain.model.Resource
 import com.learning.dashboard.domain.model.User
 import com.learning.dashboard.domain.repository.AuthRepository
+import kotlinx.coroutines.flow.Flow
 import java.util.regex.Pattern
 
 class LoginUseCase(
@@ -19,6 +20,10 @@ class LoginUseCase(
         data object Valid : ValidationResult
         data class Invalid(val emailError: String?, val passwordError: String?) : ValidationResult
     }
+
+    fun isConnected(): Boolean = authRepository.isConnected()
+
+    fun observeNetworkConnectivity(): Flow<Boolean> = authRepository.observeNetworkConnectivity()
 
     fun validateInput(email: String, password: String): ValidationResult {
         val trimmedEmail = email.trim()
@@ -46,6 +51,9 @@ class LoginUseCase(
         if (validation is ValidationResult.Invalid) {
             val message = validation.emailError ?: validation.passwordError ?: "Invalid credentials"
             return Resource.Error(message)
+        }
+        if (!authRepository.isConnected()) {
+            return Resource.Error("No internet connection. Please connect to the internet to log in.")
         }
         return authRepository.login(email.trim(), password)
     }

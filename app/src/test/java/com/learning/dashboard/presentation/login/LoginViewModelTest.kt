@@ -7,6 +7,8 @@ import com.learning.dashboard.domain.usecase.LoginUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -119,11 +121,40 @@ class LoginViewModelTest {
         assertEquals("Invalid credentials provided", finalState.generalError)
     }
 
+    @Test
+    fun `login without internet is blocked with connection error message`() = runTest {
+        fakeAuthRepository.setConnected(false)
+        viewModel.onEmailChanged("student@example.com")
+        viewModel.onPasswordChanged("securePassword123")
+
+        viewModel.login()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertFalse(state.isLoginSuccessful)
+        assertNotNull(state.generalError)
+        assertTrue(state.generalError!!.contains("internet", ignoreCase = true))
+        assertEquals(0, fakeAuthRepository.loginCallCount)
+    }
+
     private class FakeAuthRepository : AuthRepository {
         var shouldFail: Boolean = false
         var loginCallCount = 0
+        private var isConnectedValue = true
+        private val _connectivityFlow = MutableStateFlow(true)
+
+        fun setConnected(connected: Boolean) {
+            isConnectedValue = connected
+            _connectivityFlow.value = connected
+        }
+
+        override fun isConnected(): Boolean = isConnectedValue
+        override fun observeNetworkConnectivity(): Flow<Boolean> = _connectivityFlow.asStateFlow()
 
         override suspend fun login(email: String, password: String): Resource<User> {
+            if (!isConnectedValue) {
+                return Resource.Error("No internet connection.")
+            }
             loginCallCount++
             return if (shouldFail) {
                 Resource.Error("Invalid credentials provided")
@@ -133,6 +164,12 @@ class LoginViewModelTest {
         }
 
         override fun getSessionUser(): Flow<User?> = flowOf(null)
-        override suspend fun logout() {}
+
+        override suspend fun logout(): Result<Unit> {
+            if (!isConnectedValue) {
+                return Result.failure(IllegalStateException("No internet connection."))
+            }
+            return Result.success(Unit)
+        }
     }
 }

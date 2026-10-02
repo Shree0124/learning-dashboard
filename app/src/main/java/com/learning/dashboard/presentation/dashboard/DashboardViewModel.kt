@@ -106,10 +106,20 @@ class DashboardViewModel(
         }
     }
 
-    fun logout(onLoggedOut: () -> Unit) {
+    fun logout(onLoggedOut: () -> Unit, onLogoutBlocked: (String) -> Unit) {
+        if (!_isConnected.value) {
+            onLogoutBlocked("Cannot log out while offline. An active internet connection is required.")
+            return
+        }
         viewModelScope.launch {
-            authRepository.logout()
-            onLoggedOut()
+            val result = authRepository.logout()
+            if (result.isSuccess) {
+                onLoggedOut()
+            } else {
+                onLogoutBlocked(
+                    result.exceptionOrNull()?.message ?: "Cannot log out while offline."
+                )
+            }
         }
     }
 

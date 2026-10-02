@@ -62,6 +62,7 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     override val authRepository: AuthRepository by lazy {
         AuthRepositoryImpl(
+            connectivityObserver = connectivityObserver,
             ioDispatcher = Dispatchers.IO
         )
     }
