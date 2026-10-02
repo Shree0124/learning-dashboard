@@ -6,7 +6,7 @@ A production-grade mobile learning dashboard engineered with **Kotlin** and **Je
 
 ## 1. Architecture
 
-### Why did you choose your architecture?
+
 We chose **Clean Architecture combined with MVVM (Model-View-ViewModel)** and **Unidirectional Data Flow (UDF)**:
 
 ```
@@ -41,7 +41,7 @@ We chose **Clean Architecture combined with MVVM (Model-View-ViewModel)** and **
 
 ## 2. Offline Support
 
-### How are you storing and loading offline data?
+
 We implemented the **Single Source of Truth (SSOT)** pattern using **Android Room (SQLite)** and reactive **Kotlin Coroutines Flow**:
 
 1. **Local Schema**:
@@ -182,11 +182,4 @@ Run the test suite using Gradle:
 - `CourseRepositoryTest`: 4 tests verifying offline-first Room cache serving, network fallback resilience, remote progress preservation, and DAO transactions.
 - `CourseDetailViewModelTest`: 2 tests verifying lesson completion toggle and reactive progress recalculation.
 
-### 2. APK Compilation
-Compile the debug APK:
-```bash
-./gradlew assembleDebug
-```
-The verified APK is generated at:
-- `app/build/outputs/apk/debug/app-debug.apk`
-- Copied to root: `./app-debug.apk`
+
