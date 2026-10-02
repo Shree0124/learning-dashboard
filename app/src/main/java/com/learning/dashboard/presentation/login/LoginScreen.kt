@@ -43,6 +43,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -63,10 +65,12 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
     var passwordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isLoginSuccessful) {
         if (uiState.isLoginSuccessful) {
+            Toast.makeText(context, "Logged in successfully!", Toast.LENGTH_SHORT).show()
             viewModel.resetSuccess()
             onLoginSuccess()
         }

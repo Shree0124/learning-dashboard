@@ -52,6 +52,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.learning.dashboard.domain.model.Course
@@ -77,6 +79,7 @@ fun DashboardScreen(
     val isConnected by viewModel.isConnected.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var showLogoutWarningDialog by remember { mutableStateOf(false) }
     var showOfflineLogoutDialog by remember { mutableStateOf(false) }
 
@@ -271,7 +274,10 @@ fun DashboardScreen(
                     onClick = {
                         showLogoutWarningDialog = false
                         viewModel.logout(
-                            onLoggedOut = onLogout,
+                            onLoggedOut = {
+                                Toast.makeText(context, "Logged out successfully!", Toast.LENGTH_SHORT).show()
+                                onLogout()
+                            },
                             onLogoutBlocked = { message ->
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(message)
