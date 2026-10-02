@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -42,8 +44,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +77,8 @@ fun DashboardScreen(
     val isConnected by viewModel.isConnected.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    var showLogoutWarningDialog by remember { mutableStateOf(false) }
+    var showOfflineLogoutDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -127,17 +133,14 @@ fun DashboardScreen(
                         )
                     }
 
-                    // Logout Button (blocked when offline)
+                    // Logout Button (prompts warning popup before logout)
                     IconButton(
                         onClick = {
-                            viewModel.logout(
-                                onLoggedOut = onLogout,
-                                onLogoutBlocked = { message ->
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar(message)
-                                    }
-                                }
-                            )
+                            if (!isConnected) {
+                                showOfflineLogoutDialog = true
+                            } else {
+                                showLogoutWarningDialog = true
+                            }
                         }
                     ) {
                         Icon(
@@ -237,6 +240,97 @@ fun DashboardScreen(
                 }
             }
         }
+    }
+
+    // Logout Confirmation Warning Popup
+    if (showLogoutWarningDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutWarningDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = {
+                Text(
+                    text = "Confirm Logout",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to log out? You will need an active internet connection to log back in.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutWarningDialog = false
+                        viewModel.logout(
+                            onLoggedOut = onLogout,
+                            onLogoutBlocked = { message ->
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar(message)
+                                }
+                            }
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Log Out")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showLogoutWarningDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Offline Logout Warning Popup
+    if (showOfflineLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showOfflineLogoutDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.CloudOff,
+                    contentDescription = null,
+                    tint = WarningOrange
+                )
+            },
+            title = {
+                Text(
+                    text = "Cannot Log Out While Offline",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "You are currently offline. An active internet connection is required to safely log out of your account.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showOfflineLogoutDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = WarningOrange
+                    )
+                ) {
+                    Text("OK")
+                }
+            }
+        )
     }
 }
 
