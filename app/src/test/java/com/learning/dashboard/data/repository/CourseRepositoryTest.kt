@@ -66,6 +66,7 @@ class CourseRepositoryTest {
         assertEquals(1, fakeDao.insertedCourses.size)
         assertEquals(2, fakeDao.insertedLessons.size)
         assertEquals("Python Programming", fakeDao.insertedCourses[0].title)
+        assertEquals(50, fakeDao.insertedCourses[0].progress)
     }
 
     @Test
@@ -127,6 +128,9 @@ class CourseRepositoryTest {
         }
 
         override suspend fun getCourseCount(): Int = insertedCourses.size
+
+        override suspend fun getCourseById(courseId: Int): CourseEntity? =
+            insertedCourses.find { it.id == courseId }
 
         override suspend fun insertCourses(courses: List<CourseEntity>) {
             insertedCourses.clear()

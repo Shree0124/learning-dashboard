@@ -90,13 +90,16 @@ class CourseRepositoryImpl(
                 // If lessons already exist locally, preserve user completion state
                 val existingLessons = courseDao.getLessonsForCourse(dto.id)
                 val existingCompletionMap = existingLessons.associate { it.id to it.isCompleted }
+                val existingCourse = courseDao.getCourseById(dto.id)
+
+                val courseProgress = existingCourse?.progress ?: dto.progress
 
                 courseEntities.add(
                     CourseEntity(
                         id = dto.id,
                         title = dto.title,
                         instructor = dto.instructor,
-                        progress = dto.progress,
+                        progress = courseProgress,
                         lessonsCount = dto.lessons
                     )
                 )
@@ -118,16 +121,6 @@ class CourseRepositoryImpl(
             courseDao.insertCourses(courseEntities)
             if (lessonEntities.isNotEmpty()) {
                 courseDao.insertLessons(lessonEntities)
-            }
-
-            // Sync progress after preserving lessons
-            for (c in courseEntities) {
-                val lessons = courseDao.getLessonsForCourse(c.id)
-                if (lessons.isNotEmpty()) {
-                    val completed = lessons.count { it.isCompleted }
-                    val progress = ((completed.toDouble() / lessons.size.toDouble()) * 100.0).toInt().coerceIn(0, 100)
-                    courseDao.updateCourseProgress(c.id, progress)
-                }
             }
 
             Result.success(Unit)

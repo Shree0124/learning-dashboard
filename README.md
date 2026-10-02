@@ -170,16 +170,17 @@ c:/task/
 
 ## Verification & Testing
 
-### 1. Automated Unit Tests (16 Tests - 100% Pass)
+### 1. Automated Unit Tests (24 Tests - 100% Pass)
 Run the test suite using Gradle:
 ```bash
 ./gradlew test
 ```
 **Test Coverage Highlights:**
+- `AuthRepositoryTest`: 6 tests verifying successful authentication, wrong password rejection, unregistered email rejection, offline login block, and offline logout restriction.
+- `LoginViewModelTest`: 6 tests verifying email regex, password minimum length, loading indicators, error banners on failed authentication, and offline block.
 - `CalculateProgressUseCaseTest`: 6 tests verifying progress calculation logic, edge cases (0 lessons, negative values, 100% completion, rounding).
-- `CourseRepositoryTest`: 3 tests verifying offline-first Room cache serving, network fallback resilience, and DAO transactions.
+- `CourseRepositoryTest`: 4 tests verifying offline-first Room cache serving, network fallback resilience, remote progress preservation, and DAO transactions.
 - `CourseDetailViewModelTest`: 2 tests verifying lesson completion toggle and reactive progress recalculation.
-- `LoginViewModelTest`: 5 tests verifying email regex, password minimum length, loading indicators, error banners, and authentication success.
 
 ### 2. APK Compilation
 Compile the debug APK:

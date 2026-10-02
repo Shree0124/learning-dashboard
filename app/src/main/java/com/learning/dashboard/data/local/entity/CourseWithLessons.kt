@@ -15,12 +15,13 @@ data class CourseWithLessons(
 ) {
     fun toDomain(): Course {
         val sortedLessons = lessons.sortedBy { it.orderIndex }.map { it.toDomain() }
-        val domainCourse = course.toDomain().copy(
-            lessons = sortedLessons,
-            lessonsCount = if (sortedLessons.isNotEmpty()) sortedLessons.size else course.lessonsCount
-        )
-        return domainCourse.copy(
-            progress = domainCourse.calculatedProgress
+        return Course(
+            id = course.id,
+            title = course.title,
+            instructor = course.instructor,
+            progress = course.progress,
+            lessonsCount = course.lessonsCount,
+            lessons = sortedLessons
         )
     }
 }

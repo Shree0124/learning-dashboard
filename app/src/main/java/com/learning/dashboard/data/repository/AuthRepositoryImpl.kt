@@ -21,6 +21,13 @@ class AuthRepositoryImpl(
 
     private val _currentUser = MutableStateFlow<User?>(null)
 
+    // Registered demo user accounts
+    private val validCredentials = mapOf(
+        "john.doe@example.com" to "password123",
+        "student@example.com" to "password123",
+        "admin@learning.com" to "admin123"
+    )
+
     override fun isConnected(): Boolean = connectivityObserver.isConnectedNow()
 
     override fun observeNetworkConnectivity(): Flow<Boolean> = connectivityObserver.isConnected
@@ -32,12 +39,15 @@ class AuthRepositoryImpl(
 
         delay(600L) // Simulate network authentication round-trip
 
-        // Mock authentication check
-        if (password == "wrongpassword" || password == "error") {
+        val normalizedEmail = email.trim().lowercase()
+        val expectedPassword = validCredentials[normalizedEmail]
+
+        // Reject if email is not registered or password doesn't match
+        if (expectedPassword == null || expectedPassword != password) {
             return@withContext Resource.Error("Invalid email or password. Please verify your credentials.")
         }
 
-        val name = email.substringBefore("@").replaceFirstChar { it.uppercase() }
+        val name = normalizedEmail.substringBefore("@").replaceFirstChar { it.uppercase() }
         val user = User(
             email = email,
             name = name,
