@@ -3,6 +3,7 @@ package com.learning.dashboard.data.repository
 import com.learning.dashboard.data.local.dao.CourseDao
 import com.learning.dashboard.data.local.entity.CourseEntity
 import com.learning.dashboard.data.local.entity.LessonEntity
+import com.learning.dashboard.data.network.NetworkConnectivityObserver
 import com.learning.dashboard.data.remote.CourseApiService
 import com.learning.dashboard.domain.model.Course
 import com.learning.dashboard.domain.model.Resource
@@ -15,23 +16,23 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
 class CourseRepositoryImpl(
     private val courseDao: CourseDao,
     private val apiService: CourseApiService,
+    private val connectivityObserver: NetworkConnectivityObserver,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : CourseRepository {
 
-    override fun isSimulatedOffline(): Boolean = apiService.isSimulatedOffline
+    override fun observeNetworkConnectivity(): Flow<Boolean> = connectivityObserver.isConnected
 
-    override fun setSimulatedOffline(offline: Boolean) {
-        apiService.isSimulatedOffline = offline
-    }
+    override fun isConnected(): Boolean = connectivityObserver.isConnectedNow()
 
     override fun getCoursesStream(): Flow<Resource<List<Course>>> = flow {
         emit(Resource.Loading)
 
-        // Read initial cached courses from local database
+        // Read initial cached courses from local Room database
         val cached = withContext(ioDispatcher) {
             courseDao.getCoursesWithLessonsStream().firstOrNull()?.map { it.toDomain() }
         }
@@ -40,11 +41,19 @@ class CourseRepositoryImpl(
             emit(Resource.Success(cached))
         }
 
-        // Attempt remote refresh
-        val refreshResult = refreshCourses()
+        // Attempt remote refresh only if device is connected to the internet
+        val refreshResult = if (connectivityObserver.isConnectedNow()) {
+            refreshCourses()
+        } else {
+            Result.failure(IOException("No internet connection."))
+        }
 
         if (refreshResult.isFailure && cached.isNullOrEmpty()) {
-            val errorMsg = refreshResult.exceptionOrNull()?.message ?: "Failed to load courses from network."
+            val errorMsg = if (!connectivityObserver.isConnectedNow()) {
+                "No internet connection. Please connect to the internet to load courses."
+            } else {
+                refreshResult.exceptionOrNull()?.message ?: "Failed to load courses from network."
+            }
             emit(Resource.Error(errorMsg, refreshResult.exceptionOrNull()))
             return@flow
         }
@@ -66,6 +75,10 @@ class CourseRepositoryImpl(
     }
 
     override suspend fun refreshCourses(): Result<Unit> = withContext(ioDispatcher) {
+        if (!connectivityObserver.isConnectedNow()) {
+            return@withContext Result.failure(IOException("No internet connection."))
+        }
+
         try {
             val remoteCourses = apiService.getCourses()
 
@@ -74,7 +87,7 @@ class CourseRepositoryImpl(
             val lessonEntities = mutableListOf<LessonEntity>()
 
             for (dto in remoteCourses) {
-                // If lessons already exist locally, preserve completion state
+                // If lessons already exist locally, preserve user completion state
                 val existingLessons = courseDao.getLessonsForCourse(dto.id)
                 val existingCompletionMap = existingLessons.associate { it.id to it.isCompleted }
 

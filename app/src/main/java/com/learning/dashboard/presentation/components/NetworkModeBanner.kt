@@ -41,7 +41,7 @@ fun NetworkModeBanner(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "Offline Mode Active • Serving cached courses from local Room database",
+            text = "No Internet Connection • Serving cached courses from local Room database",
             style = MaterialTheme.typography.labelSmall,
             color = WarningOrange
         )

@@ -20,21 +20,44 @@ class DashboardViewModel(
     private val _uiState = MutableStateFlow<DashboardUiState>(DashboardUiState.Loading)
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
-    private val _isOfflineSimulated = MutableStateFlow(getCoursesUseCase.isSimulatedOffline())
-    val isOfflineSimulated: StateFlow<Boolean> = _isOfflineSimulated.asStateFlow()
+    private val _isConnected = MutableStateFlow(getCoursesUseCase.isConnected())
+    val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     init {
+        observeConnectivity()
         loadCourses()
+    }
+
+    private fun observeConnectivity() {
+        viewModelScope.launch {
+            getCoursesUseCase.observeNetworkConnectivity().collect { connected ->
+                val wasDisconnected = !_isConnected.value
+                _isConnected.value = connected
+
+                // Update isOffline status in current UI state
+                _uiState.update { current ->
+                    when (current) {
+                        is DashboardUiState.Success -> current.copy(isOffline = !connected)
+                        is DashboardUiState.Empty -> current.copy(isOffline = !connected)
+                        else -> current
+                    }
+                }
+
+                // If internet was restored after being disconnected, automatically sync latest data
+                if (wasDisconnected && connected) {
+                    refresh()
+                }
+            }
+        }
     }
 
     fun loadCourses() {
         viewModelScope.launch {
             getCoursesUseCase().collect { resource ->
-                val isOffline = _isOfflineSimulated.value
+                val isOffline = !_isConnected.value
                 _uiState.update {
                     when (resource) {
                         is Resource.Loading -> {
-                            // If we already have courses, keep them showing; otherwise show loading
                             val currentCourses = (it as? DashboardUiState.Success)?.courses
                             if (currentCourses.isNullOrEmpty()) {
                                 DashboardUiState.Loading
@@ -52,7 +75,6 @@ class DashboardViewModel(
                         is Resource.Error -> {
                             val currentCourses = (it as? DashboardUiState.Success)?.courses ?: emptyList()
                             if (currentCourses.isNotEmpty()) {
-                                // Graceful fallback: show cached courses with offline warning
                                 DashboardUiState.Success(currentCourses, isOffline = true)
                             } else {
                                 DashboardUiState.Error(
@@ -81,23 +103,6 @@ class DashboardViewModel(
                     _uiState.update { DashboardUiState.Error(errorMsg) }
                 }
             }
-        }
-    }
-
-    fun toggleOfflineSimulation() {
-        val newStatus = !_isOfflineSimulated.value
-        _isOfflineSimulated.value = newStatus
-        getCoursesUseCase.setSimulatedOffline(newStatus)
-
-        // If toggled offline, update state to show offline indicator
-        val current = _uiState.value
-        if (current is DashboardUiState.Success) {
-            _uiState.update { current.copy(isOffline = newStatus) }
-        } else if (current is DashboardUiState.Empty) {
-            _uiState.update { current.copy(isOffline = newStatus) }
-        } else if (!newStatus) {
-            // Toggled back online -> trigger refresh
-            refresh()
         }
     }
 

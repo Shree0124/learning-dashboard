@@ -9,6 +9,6 @@ interface CourseRepository {
     suspend fun refreshCourses(): Result<Unit>
     fun getCourseStream(courseId: Int): Flow<Course?>
     suspend fun toggleLessonCompletion(courseId: Int, lessonId: Int): Result<Unit>
-    fun isSimulatedOffline(): Boolean
-    fun setSimulatedOffline(offline: Boolean)
+    fun observeNetworkConnectivity(): Flow<Boolean>
+    fun isConnected(): Boolean
 }

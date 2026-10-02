@@ -56,9 +56,11 @@ We implemented the **Single Source of Truth (SSOT)** pattern using **Android Roo
      4. When the remote payload arrives, it updates the Room database in a transaction while preserving user completion modifications.
      5. Room automatically invalidates its active query streams and pushes fresh updates through `Flow`.
 3. **Graceful Offline Fallback**:
-   - If the network request fails (or device goes into Airplane mode / simulated offline), the repository catches the exception. If cached data already exists, the user continues browsing uninterrupted. If the cache is empty, a clean `Resource.Error` is dispatched with a retry trigger.
-4. **Interactive Offline Simulator**:
-   - The TopAppBar contains a dynamic **Offline / Online filter chip toggle** that switches simulated connectivity on the fly, allowing reviewers to verify offline caching without altering device settings.
+4. **Real-time Device Connectivity Observer**:
+   - Implemented `AndroidNetworkConnectivityObserver` utilizing Android's system `ConnectivityManager.NetworkCallback` and `NetworkCapabilities`.
+   - The app dynamically monitors the actual physical device's internet connection in real time via a reactive `Flow<Boolean>`.
+   - When the user turns off Wi-Fi/cellular or activates Airplane mode, the app instantly detects disconnection and displays an offline status badge and warning banner (`"No Internet Connection • Serving cached courses from local Room database"`), seamlessly serving cached courses from Room DB.
+   - When internet connectivity is restored, the app automatically detects the connection and triggers background synchronization with remote servers.
 
 ---
 

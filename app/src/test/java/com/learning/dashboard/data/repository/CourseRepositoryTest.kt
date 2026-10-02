@@ -4,6 +4,7 @@ import com.learning.dashboard.data.local.dao.CourseDao
 import com.learning.dashboard.data.local.entity.CourseEntity
 import com.learning.dashboard.data.local.entity.CourseWithLessons
 import com.learning.dashboard.data.local.entity.LessonEntity
+import com.learning.dashboard.data.network.NetworkConnectivityObserver
 import com.learning.dashboard.data.remote.CourseApiService
 import com.learning.dashboard.data.remote.dto.CourseDto
 import com.learning.dashboard.data.remote.dto.LessonDto
@@ -11,7 +12,6 @@ import com.learning.dashboard.domain.model.Resource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -27,21 +27,24 @@ class CourseRepositoryTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeDao: FakeCourseDao
     private lateinit var fakeApiService: FakeCourseApiService
+    private lateinit var fakeConnectivityObserver: FakeNetworkConnectivityObserver
     private lateinit var repository: CourseRepositoryImpl
 
     @Before
     fun setUp() {
         fakeDao = FakeCourseDao()
         fakeApiService = FakeCourseApiService()
+        fakeConnectivityObserver = FakeNetworkConnectivityObserver(isConnectedValue = true)
         repository = CourseRepositoryImpl(
             courseDao = fakeDao,
             apiService = fakeApiService,
+            connectivityObserver = fakeConnectivityObserver,
             ioDispatcher = testDispatcher
         )
     }
 
     @Test
-    fun `refreshCourses inserts courses and lessons into local DAO`() = runTest(testDispatcher) {
+    fun `refreshCourses inserts courses and lessons into local DAO when online`() = runTest(testDispatcher) {
         val remoteCourses = listOf(
             CourseDto(
                 id = 1,
@@ -66,7 +69,17 @@ class CourseRepositoryTest {
     }
 
     @Test
-    fun `getCoursesStream returns cached data when remote API fails (offline mode)`() = runTest(testDispatcher) {
+    fun `refreshCourses returns failure when device is offline without calling API`() = runTest(testDispatcher) {
+        fakeConnectivityObserver.setConnected(false)
+
+        val result = repository.refreshCourses()
+
+        assertTrue(result.isFailure)
+        assertEquals(0, fakeApiService.callCount)
+    }
+
+    @Test
+    fun `getCoursesStream returns cached data when device is offline`() = runTest(testDispatcher) {
         // Pre-populate DAO cache
         val cachedCourse = CourseEntity(1, "Cached Python", "John Smith", 50, 2)
         val cachedLessons = listOf(
@@ -76,15 +89,15 @@ class CourseRepositoryTest {
         fakeDao.insertCourses(listOf(cachedCourse))
         fakeDao.insertLessons(cachedLessons)
 
-        // Remote fails (network offline)
-        fakeApiService.shouldThrowError = true
+        // Device is offline
+        fakeConnectivityObserver.setConnected(false)
 
         val emissions = repository.getCoursesStream().take(2).toList()
 
         // First emission is Loading
         assertEquals(Resource.Loading, emissions[0])
 
-        // Second emission serves cached data despite remote failure
+        // Second emission serves cached data despite being offline
         assertTrue(emissions[1] is Resource.Success)
         val data = (emissions[1] as Resource.Success).data
         assertEquals(1, data.size)
@@ -179,15 +192,31 @@ class CourseRepositoryTest {
         override var isSimulatedOffline: Boolean = false
         var shouldThrowError = false
         var coursesToReturn = listOf<CourseDto>()
+        var callCount = 0
 
         override suspend fun getCourses(): List<CourseDto> {
+            callCount++
             if (shouldThrowError) throw IOException("Simulated network outage")
             return coursesToReturn
         }
 
         override suspend fun getCourseDetails(courseId: Int): CourseDto? {
+            callCount++
             if (shouldThrowError) throw IOException("Simulated network outage")
             return coursesToReturn.find { it.id == courseId }
+        }
+    }
+
+    private class FakeNetworkConnectivityObserver(
+        var isConnectedValue: Boolean = true
+    ) : NetworkConnectivityObserver {
+        private val _isConnected = MutableStateFlow(isConnectedValue)
+        override val isConnected: Flow<Boolean> = _isConnected.asStateFlow()
+        override fun isConnectedNow(): Boolean = isConnectedValue
+
+        fun setConnected(connected: Boolean) {
+            isConnectedValue = connected
+            _isConnected.value = connected
         }
     }
 }

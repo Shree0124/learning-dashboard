@@ -16,9 +16,11 @@ class GetCoursesUseCase(
         return repository.refreshCourses()
     }
 
-    fun isSimulatedOffline(): Boolean = repository.isSimulatedOffline()
+    fun observeNetworkConnectivity(): Flow<Boolean> {
+        return repository.observeNetworkConnectivity()
+    }
 
-    fun setSimulatedOffline(offline: Boolean) {
-        repository.setSimulatedOffline(offline)
+    fun isConnected(): Boolean {
+        return repository.isConnected()
     }
 }

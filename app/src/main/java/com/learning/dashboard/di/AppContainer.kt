@@ -3,6 +3,8 @@ package com.learning.dashboard.di
 import android.content.Context
 import com.learning.dashboard.data.local.AppDatabase
 import com.learning.dashboard.data.local.dao.CourseDao
+import com.learning.dashboard.data.network.AndroidNetworkConnectivityObserver
+import com.learning.dashboard.data.network.NetworkConnectivityObserver
 import com.learning.dashboard.data.remote.CourseApiService
 import com.learning.dashboard.data.remote.MockCourseApiService
 import com.learning.dashboard.data.repository.AuthRepositoryImpl
@@ -20,6 +22,7 @@ interface AppContainer {
     val database: AppDatabase
     val courseDao: CourseDao
     val apiService: CourseApiService
+    val connectivityObserver: NetworkConnectivityObserver
     val courseRepository: CourseRepository
     val authRepository: AuthRepository
 
@@ -44,10 +47,15 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
         MockCourseApiService()
     }
 
+    override val connectivityObserver: NetworkConnectivityObserver by lazy {
+        AndroidNetworkConnectivityObserver(context)
+    }
+
     override val courseRepository: CourseRepository by lazy {
         CourseRepositoryImpl(
             courseDao = courseDao,
             apiService = apiService,
+            connectivityObserver = connectivityObserver,
             ioDispatcher = Dispatchers.IO
         )
     }

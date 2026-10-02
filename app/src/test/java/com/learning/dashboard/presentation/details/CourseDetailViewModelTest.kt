@@ -117,7 +117,7 @@ class CourseDetailViewModelTest {
 
         override fun getCoursesStream(): Flow<Resource<List<Course>>> = flowOf(Resource.Success(emptyList()))
         override suspend fun refreshCourses(): Result<Unit> = Result.success(Unit)
-        override fun isSimulatedOffline(): Boolean = false
-        override fun setSimulatedOffline(offline: Boolean) {}
+        override fun observeNetworkConnectivity(): Flow<Boolean> = flowOf(true)
+        override fun isConnected(): Boolean = true
     }
 }

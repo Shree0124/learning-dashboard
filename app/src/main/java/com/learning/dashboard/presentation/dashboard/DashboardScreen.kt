@@ -20,18 +20,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -57,6 +54,8 @@ import com.learning.dashboard.presentation.theme.PrimaryBlue
 import com.learning.dashboard.presentation.theme.SuccessGreen
 import com.learning.dashboard.presentation.theme.TextPrimary
 import com.learning.dashboard.presentation.theme.TextSecondary
+import com.learning.dashboard.presentation.theme.WarningOrange
+import com.learning.dashboard.presentation.theme.WarningOrangeBg
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,7 +65,7 @@ fun DashboardScreen(
     onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isOfflineSimulated by viewModel.isOfflineSimulated.collectAsState()
+    val isConnected by viewModel.isConnected.collectAsState()
 
     Scaffold(
         topBar = {
@@ -86,29 +85,31 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
-                    // Offline Mode Simulator Toggle Button
-                    FilterChip(
-                        selected = isOfflineSimulated,
-                        onClick = { viewModel.toggleOfflineSimulation() },
-                        label = {
-                            Text(
-                                if (isOfflineSimulated) "Offline" else "Online",
-                                style = MaterialTheme.typography.labelSmall
-                            )
-                        },
-                        leadingIcon = {
+                    // Show subtle offline badge if device loses internet connection
+                    if (!isConnected) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(WarningOrangeBg)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
                             Icon(
-                                imageVector = if (isOfflineSimulated) Icons.Default.WifiOff else Icons.Default.Wifi,
-                                contentDescription = "Toggle Network Mode",
-                                modifier = Modifier.size(16.dp)
+                                imageVector = Icons.Default.CloudOff,
+                                contentDescription = "Device Offline",
+                                tint = WarningOrange,
+                                modifier = Modifier.size(14.dp)
                             )
-                        },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
-                        ),
-                        modifier = Modifier.padding(end = 6.dp)
-                    )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Offline",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = WarningOrange
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
 
                     // Refresh Button
                     IconButton(onClick = { viewModel.refresh() }) {
@@ -139,7 +140,7 @@ fun DashboardScreen(
                 .padding(paddingValues)
         ) {
             // Offline Notification Banner
-            NetworkModeBanner(isOffline = isOfflineSimulated)
+            NetworkModeBanner(isOffline = !isConnected)
 
             when (val state = uiState) {
                 is DashboardUiState.Loading -> {
